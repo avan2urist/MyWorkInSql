@@ -1,0 +1,523 @@
+--лаб5
+
+
+
+--Выведите список всех предоставленных услуг за определенный 
+--период времени (сентябрь 2019 года), отсортированный по дате оказания услуги.
+select * from ClientService
+where Cast(StartTime as date) between '2019-09-01' and '2019-09-30'
+order by StartTime
+
+--Список всех услуг, содержащие слово «замена» с указанием их 
+--стоимости.
+select Title, Cost from Service
+where Title like '%Замена%'
+
+--Список продаж товара, наименование которого начинается на 
+--«Учебник английского языка», с указанием даты продажи, отсортированный по 
+--дате продажи и количеству.
+select Title, SaleDate, Quanity from ProductSale
+left join 
+Product
+on 
+Product.ID = ProductSale.ProductID
+where Title like 'Учебник английского языка%'
+order by SaleDate, Quanity
+
+--Выведите среднюю продолжительность услуги в минутах;
+select (avg(DurationSeconds)/60) as DurationSeconds from Service 
+
+--Количество различных поставщиков, осуществляющих поставки 
+--товаров
+select count(distinct  ManufacturerID) as DistinctManufacturer from Product
+
+--Дату рождения самого молодого и самого взрослого клиента
+--компании;
+select max(BirthDay) as MaxBirthDay, min(BirthDay) as MinBirthDay from Client
+
+--Количество проданных товаров за ноябрь 2019 года
+select count(*)as ProductSale  from ProductSale
+where CAST(SaleDate as date) between '01-11-2019' and '30-11-2019' 
+
+--Выведите количество товаров, стоимость которых более 1500 руб. с 
+--учетом скидки
+--Все что связано с товарами не имеет скидок только услуги поэтому считать буду их 
+
+select count(ID) as PriceServiceWithDiscount from Service
+where Cost - (Cost * Discount) > 1500
+
+--Выведите количество клиентов мужского и женского пола;
+select count(distinct ID) as Peoples, GenderCode from Client
+group by GenderCode
+--Выведите средний возраст клиентов.
+select avg(DATEDIFF(year, BirthDay ,GETDATE())) as AvgAge from Client
+
+--Выведите список товаров (ID и дату последней продажи), которые 
+--были проданы 2 и более раз за 2019 год.
+
+select ProductID, max(SaleDate) as LastSale from ProductSale
+where SaleDate between '01-01-2019' and '31-12-2019'
+group by ProductID
+having count(*)>=2
+
+--Выведите список поставщиков (ID), которые поставляют более 
+--одного товара. Отсортируйте по количеству поставляемых товаров в порядке 
+--убывания
+
+select ManufacturerID, count(ID) QuanityProduct from Product
+group by ManufacturerID
+having count(*)>1
+order by count(ManufacturerID) DESC
+
+
+--лабораторная 6 
+
+
+--Сформулируйте запрос, возвращающий все заказы, в которых 
+--содержится товар «Dive in! Blue»
+select * from ProductSale
+where ProductID = (select ID from Product where [Title] = 'Dive in! Blue')
+
+--Выведите сведения о предоставлении услуги под названием 
+--«Ремонт компрессора кондиционера»
+select * from ClientService 
+where ServiceID = (select ID from Service where [Title] = 'Ремонт компрессора кондиционера')
+
+--Сформулируйте запрос, возвращающий список всех клиентов, 
+--совершивших заказ за определенный период времени (первое полугодие 2019 
+--года). Отсортируйте список по фамилии клиента.
+select * from Client
+where ID IN
+(select ClientID from ClientService where StartTime between '01-01-2019' and '30-06-2019')
+order by LastName
+--Сформулируйте запрос, возвращающий список всех товаров, 
+--которые были проданы в текущем месяце 2019 года
+select * from Product 
+where ID in 
+(select ProductID from ProductSale where month(SaleDate) = month(getdate()) and year(SaleDate)='2019')
+
+--Сформулируйте запрос, возвращающий список услуг, которые 
+--были предоставлены более трех раз;
+
+select * from Service
+Where ID in
+(select ServiceID from ClientService group by ServiceID
+having count(*)>3)
+
+--Выведите название и стоимость самого дорогого и самого дешевого 
+--товара
+select Title, Cost from Product 
+where Cost = (select min(Cost) from Product)
+or  Cost = (select max(Cost) from Product)
+
+--Выведите название и продолжительность услуги с максимальной 
+--скидкой. Отсортируйте по продолжительности услуги от большего к меньшему;
+select Title, DurationSeconds from Service
+where Discount = (select max(Discount) from Service)
+order by DurationSeconds desc
+
+--Выведите название и стоимость самой дешевой услуги с учетом 
+--скидки
+select Title, min(Cost - (Cost*Discount)) as CostWithDiscount from Service
+where Cost - (Cost*Discount) = (select min(Cost - (Cost*Discount)) from Service)
+Group by Title
+
+
+--лабораторная 7
+
+
+
+--Выведите список всех клиентов с указанием ФИО (в один столбец, 
+--разделенные пробелами) и контактных данных, а также количество оказанных
+--ему услуг и дату последней услуги. Обратите внимание, что в списке должны 
+--быть выведены все клиенты, даже те, которым услуги не были оказаны ни разу.
+--Отсортируйте по количеству предоставленных услуг.
+select CONCAT(TRIM(FirstName),' ', TRIM(LastName),' ', TRIM(Patronymic)) as FIO, Phone, count(ClientService.ID) as QuanityService, 
+max(CAST(ClientService.StartTime as date)) as LastService  from Client
+left join 
+ClientService
+on 
+Client.ID = ClientService.ClientID
+group by FirstName,LastName,Patronymic,Phone
+order by count(ClientService.ID)
+
+--Выведите сведения о востребованности товаров. А именно: 
+--наименование, общая стоимость продаж товара, общее количество проданного 
+--товара, количество продаж товара, дата последней продажи. Отсортируйте –
+--сначала самые востребованные товары.
+
+
+select distinct Title, sum(Quanity)as CountSaledProduct, 
+sum(Cost*Quanity)  as FinallyCost, max(SaleDate) as LastDateSale from Product
+left join 
+ProductSale on ProductSale.ProductID = Product.ID
+Group by Title
+order by Sum(Quanity) desc
+
+--Выведите сведения об общей выручке от оказанных услуг (с учетом скидки на услугу), количестве оказанных 
+--услуг и средней продолжительности услуги в минутах за первое и второе полугодие 2019 года. 
+select sum(Cost - Cost*Discount) as Cost, count(Service.ID) as QuantityOfService, 
+avg(DurationService/60) as AvgTime From Service
+left join
+ClientService on Service.ID = ClientService.ServiceID
+where
+StartTime BETWEEN '01-01-2019' and '30-06-2019'
+
+select sum(Cost - Cost*Discount) as Cost, count(Service.ID) as QuantityOfService, 
+avg(DurationService/60) as AvgTime From Service
+left join
+ClientService on Service.ID = ClientService.ServiceID
+where
+StartTime BETWEEN '01-07-2019' and '31-12-2019'
+
+select distinct Title, count(Service.ID) as QuantityOfService,  YEAR(GETDATE())-YEAR(BirthDay) from Service
+left join ClientService on Service.ID = ClientService.ServiceID
+left join Client on Client.ID = ClientService.ClientID
+where YEAR(GETDATE())-YEAR(BirthDay) BETWEEN 5 and 60
+group by Title, BirthDay
+order by Count(Service.ID)
+
+--Для формирования системы лояльности для клиентов, выведите сведения о клиентах, день рождения которых в текущем месяце. Список должен содержать ФИО, дату рождения, Email, количество совершенных заказов на предоставление услуги, общую стоимость предоставленных услуг. 
+select (LastName + ' ' + FirstName + ' ' + Patronymic) as Fullname, 
+BirthDay, Email, Phone, 
+count(ClientService.ID) as QuantityOfService, sum(Cost) as Cost
+from Client
+right join 
+ClientService on Client.ID = ClientService.ClientID
+left join
+Service on ClientService.ServiceID = Service.ID
+where month(GETDATE())= month(BirthDay)
+group by 
+LastName, Firstname, Patronymic, Email, Phone, BirthDay
+
+
+
+--лабораторная 8 
+
+
+
+--Выведите каталог актуальных товаров. А именно, все сведения о товаре, его производителе, количестве продаж. Выводить стоит только те товары, статус которых – «Актуален». 
+
+create view VW_ActuallyProduct
+as
+select Title, IsActive = 'True', Cost, Manufacturer.Name, count(ProductSale.ProductID) as QuantityofSale from Product
+left join 
+Manufacturer on Manufacturer.ID = Product.ManufacturerID
+left join ProductSale on ProductSale.ProductID = Product.ID
+where IsActive = 'True'
+group by Title, Cost, Name
+
+select * from VW_ActuallyProduct
+
+
+----Выведите сведения о услугах, оказанных в июне 2019 года. А именно: Фамилию и инициалы клиента (воспользуйтесь функцией LEFT), Название услуги, Стоимость с учетом скидки, Дату начала предоставления услуги, Продолжительность в минутах, Дату окончания предоставления услуги (воспользуйтесь функцией DateAdd).
+
+CREATE VIEW ServicesInJine2019
+AS
+select Concat(LastName, ' ', left(FirstName,1), '. ', left(Patronymic,1), '.' ) as FIO,
+Title, Cost - Cost * Discount as CostWithDiscount, StartTime, DurationService/60 as TimeInMinute, DATEADD(minute, DurationService/60, StartTime) as EndServiceTime
+from ClientService
+left join
+Client on ClientService.ClientID = Client.ID
+right join 
+Service ON ClientService.ServiceID = Service.ID
+WHERE MONTH(StartTime) = '06' AND YEAR(StartTime) = '2019'
+
+--Выведите сведения о всех продажах товаров: Наименование товара и 
+--производитель по шаблону «Название_товара; Производитель: 
+--Название_производителя»,
+--Дата продажи, Количество проданного товара
+
+CREATE VIEW AllSalesProduct
+AS
+SELECT CONCAT(Title, '; ', 'Производитель: ', Name) AS Product,
+	SaleDate,
+	SUM(Quantity) AS SaleQuantity
+FROM Product
+LEFT JOIN
+	Manufacturer ON Product.ManufacturerID = Manufacturer.ID
+LEFT JOIN
+	ProductSale ON Product.ID = ProductSale.ProductID
+GROUP BY Title, Name, SaleDate
+
+SELECT * FROM AllSalesProduct
+
+
+
+лабораторная 9 
+
+
+--Если в базе данных есть клиенты, у которых день рождения в 
+--текущем месяце, выведите сообщение «В текущем месяце есть 
+--именинники среди клиентов компании!». В противном случае, 
+--выведите соответствующее сообщение
+
+if exists (select * from Client
+where Month(BirthDay) = MONTH(Getdate()))
+Print 'В текущем месяце есть именинники среди клиентов компании!'
+else 
+print 'В текущем месяце нет именинников среди клиентов компании!’
+
+--Дополните предыдущие условие и выведите количество
+--именинников в текущем месяце
+
+if exists (select count(*) from Client
+where Month(BirthDay) = MONTH(Getdate()))
+Print 'В текущем месяце есть именинники среди клиентов компании!'
+else 
+print 'В текущем месяце нет именинников среди клиентов компании!'
+declare @nnn  int;
+set @nnn = ((select count(*) from Client
+where Month(BirthDay) = MONTH(Getdate()))) 
+Print @nnn
+
+--Если общая сумма от продаж товаров (количество проданного 
+--товара * стоимость) менее 200 000 руб., вывести сообщение 
+--«Выручка составила – ‘Сумма продаж’. Нужно больше продаж!». 
+--Иначе - «Выручка составила – ‘Сумма продаж’. Не плохо, но могли 
+--бы и лучше!»
+
+declare @perem int
+set @perem =(select sum(Quantity*CAST(Cost as int)) from ProductSale
+left join
+Product
+on
+Product.ID = ProductSale.ProductID)
+print @perem
+
+if @perem<200000
+	Print 'Выручка составила – ' + CAST(@perem as varchar) + ' Нужно больше продаж!';
+else 
+	Print 'Выручка составила – ' + CAST(@perem as varchar) + ' Не плохо, но могли бы и лучше!';
+
+
+--Выведите список товаров: Название, Стоимость, Актуальность 
+--(Если атрибут IsActive = TRUE, то вывести «Актуален», если 
+--FALSE – «Не для продажи)
+SELECT Title, Cost,
+    CASE 
+        WHEN IsActive = 1 THEN 'Актуален'
+        ELSE 'Не для продажи'
+    END AS Актуальность
+FROM Product;
+
+--Выведите список услуг: Название, Стоимость с учетом скидки, 
+--Длительность (Если услуги длится менее 60 минут -
+--Непродолжительная услуга, от 60 до 120 минут – Услуга средней 
+--длительности, более 120 минут – Длительная услуга), 
+--Длительность услуги в минутах. Отсортируйте список по 
+--стоимости.
+SELECT Title, Cost - Cost*Discount as CostWithDiscount, DurationSeconds/60 as Duration,
+    CASE 
+        WHEN DurationSeconds/60 > 120 THEN 'Длительная услуга'
+        WHEN DurationSeconds/60 > 60 THEN 'Услуга средней длительности'
+        ELSE 'Непродолжительная услуга'
+    END AS ServiceType
+FROM Service
+ORDER BY Cost - Cost*Discount; 
+
+--Выведите список клиентов: Фамилия И.О., Пол, Возраст, 
+--Примечание (если клиент записан более 3ех раз на услугу –
+--«Постоянный клиент», от 1 до 3ех – «Иногда заглядывает», 0 – «Ни 
+--одной услуги не оказано. Как так?
+SELECT LastName, FirstName, Patronymic, GenderCode, DATEDIFF(year, BirthDay, GETDATE()) AS Age,
+  CASE 
+    WHEN COUNT(ClientService.ID) > 3 THEN 'Постоянный клиент'
+    WHEN COUNT(ClientService.ID) = 0 THEN 'Ни одной услуги не оказано. Как так?'
+    ELSE 'Иногда заглядывает'
+  END AS VisitClient
+FROM Client
+LEFT JOIN ClientService ON Client.ID = ClientService.ClientID
+GROUP BY LastName, FirstName, Patronymic, GenderCode, BirthDay
+
+--С использованием цикла добавьте в таблицу «Категория товара»
+--10 строк по шаблону: Категория 1, Категория 2 … Категория 10.
+DECLARE @count INT = 1;
+WHILE @count <= 10
+BEGIN
+    INSERT INTO CategoryProduct(Title)
+    VALUES ('Категория ' + CAST(@count AS VARCHAR(2)))
+    SET @count = @count + 1;
+END;
+
+--Рассчитайте среднюю стоимость товара. При помощи 
+--конструкции WHILE увеличьте стоимость на 20% тех товаров, 
+--стоимость которых ниже средней
+
+
+DECLARE @avg INT = (SELECT AVG(Cost) AS AvgPrice FROM Product);
+DECLARE @countt INT = 0;
+
+WHILE @countt < 101
+BEGIN
+    UPDATE Product SET Cost = Cost * 1.2 WHERE Cost < @avg;
+    SET @countt = @countt + 1;
+END;
+	
+SELECT * FROM Product
+
+Сделал по-простому немного нет понимания как перебрать 100 строк по-другому также сделал через вложенный запрос так даже легче 
+UPDATE Product
+SET Cost = Cost * 1.2
+WHERE Cost < (SELECT AVG(Cost) FROM Product);
+
+SELECT * FROM Product
+
+
+
+лабораторная работа 10
+
+
+
+-- Создайте хранимую процедуру, которая выводит список услуг 
+--(Наименование, стоимость, продолжительность, дата начала оказания услуги), 
+--которые были оказаны в заданном диапазоне дат (при помощи входных параметров). 
+create proc ServiceListWithDate
+@date1 date, @date2 date
+as
+select Service.Title,
+		Service.Cost,
+		Service.DurationService,
+		ClientService.StartTime from Service
+left join
+ClientService
+on
+Service.ID = ClientService.ServiceID
+where ClientService.StartTime between @date1 and @date2
+
+exec ServiceListWithDate '2018-01-01', '2019-01-30'
+
+--Создайте хранимую процедуру, которая в качестве входного параметра 
+--принимает наименование услуги. Возвращает: 
+--Количество раз, которое услуга была предоставлена; 
+--Общая сумма выручки от услуги. 
+
+create proc ServiceProfit
+@TitleService nvarchar(100)
+as
+select Title, count(ClientService.ID) as QuanityService, sum(Cost-(Cost*Discount)) as SumCost from Service
+left join
+ClientService
+on
+Service.ID=ClientService.ServiceID
+where Title like '%' + @TitleService + '%'
+group by Title
+
+ DROP PROCEDURE ServiceProfit
+
+ exec ServiceProfit 'Ремонт '
+
+ select count(ClientService.ID) from ClientService
+
+--Рассчитайте среднюю стоимость товаров. При помощи хранимой 
+--процедуры выведите список товаров, которые дороже 
+--средней стоимости. 
+
+create proc ProductPaidMoreAvgPrice
+as
+declare @vrem int = (select avg(Cost) from Product)
+select * from Product 
+where Cost > @vrem
+
+exec ProductPaidMoreAvgPrice 
+
+drop procedure ProductPaidMoreAvgPrice
+
+--Создайте хранимую процедуру, которая будет принимать в качестве входного параметра название услуги, 
+--время для записи на услугу и номер телефона клиента (например, «Замена фильтров» на 15.09.2021 клиент - 7(78)972-73-11)
+--и выполнять следующий функционал:
+--- Если клиента с указанным номером телефона нет в базе данных, вывести соответствующие сообщение «Клиента с указанным номером телефона нет в базе данных, для записи на услугу добавьте сведения о клиенте». –
+--Если услуги с введенным названием нет в базе данных, вывести соответствующее сообщение: «Проверьте правильность наименования услуги, такой услуги в нашей компании нет». – Если данные о клиенте и услуге введены корректно, добавить запись на услугу в таблицу ClientService и вывести сообщение «Запись на услугу успешно добавлена! 
+--Фамилия И.О. записан на услугу Название услуги на Дата и Время услуги». 
+
+create proc CreateNewLineOnClientService 
+@TitleService nvarchar(100),
+@TimeStart datetime,
+@Phone nvarchar(20)
+as
+if not exists (select * from Service where Title = @TitleService)
+
+Print 'Проверьте правильность наименования услуги, такой услуги в нашей компании нет'
+
+if not exists (select * from Client where Phone = @Phone)
+
+Print 'Клиента с указанным номером телефона нет в базе данных, для записи на услугу добавьте сведения о клиенте'
+
+else
+begin
+    declare @ClientId int
+    set @ClientId = (select Id from Client where Phone = @Phone)
+	declare @ClientFIO nvarchar(80)
+	set @ClientFIO = (select CONCAT(Trim(LastName),' ', left(FirstName,1) ,'.',Trim(left(Patronymic,1)))
+	from Client where Phone = @Phone)
+	declare @NameService nvarchar(100)
+	set @NameService = (select Title from Service where Title = @TitleService)
+	
+    insert into ClientService (ClientId, ServiceId, StartTime)
+    select @ClientId, Id, @TimeStart from Service where Title = @TitleService
+
+    print 'Запись на услугу успешно добавлена! ' + @ClientFIO + ' записан на услугу ' + @NameService + ' на ' + convert(nvarchar(10), @TimeStart, 104)
+end
+
+
+drop procedure CreateNewLineOnClientService
+exec CreateNewLineOnClientService 'Замена сальника привода', '01.02.2024 17:13:00', '7(0972)781-11-37    '
+
+--Создайте хранимую процедуру, которая в качестве входного 
+--параметра будет принимать две даты (например, 01.01.2021 и 
+--01.02.2021, при этом вторая дата не обязательна для ввода), и 
+--возвращать: Список товаров, которые были проданы в указанный 
+--период времени (Название товара, название производителя, цена, 
+--количество, сумма, дата продажи). Если ни одного товара не было 
+--продано, вывести соответствующие сообщение. Если при вводе 
+--входных параметров вторая дата не указана, то вывести список продаж
+--только за указанную дату (например, 01.01.2021)
+
+create proc SalesBetweenTwoDatesOrOnaDate
+@Date1 date,
+@Date2 date = null
+as
+begin
+if @Date2 IS NOT NULL 
+begin
+select Product.Title, Manufacturer.Name as ManufacturerName, Product.Cost * ProductSale.Quanity as CostWithQuanity, ProductSale.Quanity, cast(ProductSale.SaleDate as date) as DateSale 
+from Product 
+join Manufacturer on Product.ManufacturerID = Manufacturer.ID
+left join ProductSale on ProductSale.ProductID = Product.ID and cast(ProductSale.SaleDate as date) between @Date1 and @Date2
+where ProductSale.Quanity > 0
+	if @@ROWCOUNT = 0
+	print 'В выбранном вами периоде не было продано ни одного товара'
+end        
+
+
+if @Date2 IS NULL 
+begin
+select Product.Title, Manufacturer.Name as ManufacturerName, Product.Cost * ProductSale.Quanity as CostWithQuanity, ProductSale.Quanity, cast(ProductSale.SaleDate as date) as DateSale 
+from Product 
+join Manufacturer ON Product.ManufacturerID = Manufacturer.ID
+join ProductSale ON ProductSale.ProductID = Product.ID AND cast(ProductSale.SaleDate as date) = @Date1
+where ProductSale.Quanity> 0
+	if @@ROWCOUNT = 0
+	print 'В выбранном вами периоде не было продано ни одного товара'
+end
+end 
+
+
+drop procedure SalesBetweenTwoDatesOrOnaDate
+exec SalesBetweenTwoDatesOrOnaDate '2019-05-27', '2019-05-28'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
